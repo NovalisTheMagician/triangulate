@@ -15,20 +15,22 @@ $(APPLICATION): main.o triangulate.o
 $(LIBRARY): triangulate.o
 	ar rcs $@ $^
 
-%.o: %.c Makefile
+%.o: %.c triangulate.h Makefile
 	gcc $(CCFLAGS) -c $< -o $@
 
-%.o: %.cpp Makefile
+%.o: %.cpp triangulate.h Makefile
 	g++ $(CCFLAGS) -c $< -o $@
 
 .PHONY: clean install uninstall
 install: 
 	cp $(LIBRARY) /usr/local/lib/
 	cp $(APPLICATION) /usr/local/bin/
+	cp triangulate.h /usr/local/include/
 
 uninstall:
 	rm -f /usr/local/lib/$(LIBRARY)
 	rm -f /usr/local/bin/$(APPLICATION)
+	rm -f /usr/local/include/triangulate.h
 
 clean:
 	rm -f *.o
