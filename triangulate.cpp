@@ -32,27 +32,18 @@ int triangulate(const Vertex *outerPolygon, size_t numOuterVertices, const Verte
     if(!outerPolygon || numOuterVertices < 3 || !indices || (numInnerPolygons > 0 && (!numInnerVertices || !innerPolygons)))
         return 0;
 
+    const auto convVert = [](const Vertex &v) -> Vertex_Intern { return { v[0], v[1] }; };
+
     std::vector<std::vector<Vertex_Intern>> polygons;
-
-    polygons.push_back(std::vector<Vertex_Intern>(numOuterVertices));
-    std::transform(outerPolygon, outerPolygon + numOuterVertices, polygons[0].begin(), [](const Vertex &v) 
-    {
-        Vertex_Intern v2 = { v[0], v[1] };
-        return v2;
-    });
-
+    polygons.emplace_back(numOuterVertices);
+    std::transform(outerPolygon, outerPolygon + numOuterVertices, polygons[0].begin(), convVert);
     for (size_t i = 0; i < numInnerPolygons; ++i)
     {
-        polygons.push_back(std::vector<Vertex_Intern>(numInnerVertices[i]));
-        std::transform(innerPolygons[i], innerPolygons[i]+numInnerVertices[i], polygons[i+1].begin(), [](const Vertex &v) 
-        {
-            Vertex_Intern v2 = { v[0], v[1] };
-            return v2;
-        });
+        polygons.emplace_back(numInnerVertices[i]);
+        std::transform(innerPolygons[i], innerPolygons[i]+numInnerVertices[i], polygons[i+1].begin(), convVert);
     }
 
     std::vector<Index> ind = mapbox::earcut<Index>(polygons);
-
     *indices = (Index*)malloc(ind.size() * sizeof **indices);
     std::copy(ind.begin(), ind.end(), *indices);
 
