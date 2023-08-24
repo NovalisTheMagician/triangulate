@@ -47,7 +47,7 @@ int triangulate(const Vertex *outerPolygon, size_t numOuterVertices, const Verte
     *indices = (Index*)malloc(ind.size() * sizeof **indices);
     std::copy(ind.begin(), ind.end(), *indices);
 
-    return 1;
+    return ind.size();
 }
 
 #ifdef __cplusplus
