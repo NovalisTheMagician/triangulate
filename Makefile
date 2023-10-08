@@ -3,17 +3,24 @@ LIBRARY := lib$(APPLICATION).a
 
 CPPFLAGS := 
 
+INSTALL_PREFIX := /usr/local
+
+INSTALL_LIB_PATH := $(INSTALL_PREFIX)/lib
+INSTALL_INC_PATH := $(INSTALL_PREFIX)/include
+
 ifeq ($(OS),Windows_NT)
     APPLICATION := $(APPLICATION).exe
     CPPFLAGS += -I$(INC_PATH)
+    INSTALL_LIB_PATH := $(LIB_GCC_PATH)
+    INSTALL_INC_PATH := $(INC_PATH)
 endif
 
 CCFLAGS := -O2 -Wall
 
-all: $(APPLICATION) $(LIBRARY)
+all: $(LIBRARY)
 
-$(APPLICATION): main.o triangulate.o
-	g++ -o $@ $^
+#$(APPLICATION): main.o triangulate.o
+#	g++ -o $@ $^
 
 $(LIBRARY): triangulate.o
 	ar rcs $@ $^
@@ -26,14 +33,12 @@ $(LIBRARY): triangulate.o
 
 .PHONY: clean install uninstall
 install: 
-	cp $(LIBRARY) /usr/local/lib/
-	cp $(APPLICATION) /usr/local/bin/
-	cp triangulate.h /usr/local/include/
+	cp $(LIBRARY) $(INSTALL_LIB_PATH)/
+	cp triangulate.h $(INSTALL_INC_PATH)/
 
 uninstall:
-	rm -f /usr/local/lib/$(LIBRARY)
-	rm -f /usr/local/bin/$(APPLICATION)
-	rm -f /usr/local/include/triangulate.h
+	rm -f $(INSTALL_LIB_PATH)/$(LIBRARY)
+	rm -f $(INSTALL_INC_PATH)/triangulate.h
 
 clean:
 	rm -f *.o
