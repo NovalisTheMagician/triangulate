@@ -1,8 +1,11 @@
 APPLICATION := triangulate
 LIBRARY := lib$(APPLICATION).a
 
+CPPFLAGS := 
+
 ifeq ($(OS),Windows_NT)
     APPLICATION := $(APPLICATION).exe
+    CPPFLAGS += -I$(INC_PATH)
 endif
 
 CCFLAGS := -O2 -Wall
@@ -16,10 +19,10 @@ $(LIBRARY): triangulate.o
 	ar rcs $@ $^
 
 %.o: %.c triangulate.h Makefile
-	gcc $(CCFLAGS) -c $< -o $@
+	gcc $(CCFLAGS) $(CPPFLAGS) -c $< -o $@
 
 %.o: %.cpp triangulate.h Makefile
-	g++ $(CCFLAGS) -c $< -o $@
+	g++ $(CCFLAGS) $(CPPFLAGS) -c $< -o $@
 
 .PHONY: clean install uninstall
 install: 
