@@ -67,10 +67,11 @@ struct ClipResult clip(const struct Polygon *polygonA, const struct Polygon *pol
     std::vector<int64_t> aVertices((size_t)polygonA->length * 2);
     for(unsigned long i = 0; i < polygonA->length; ++i)
     {
+        size_t idx = i * 2;
         int64_t x = polygonA->vertices[i][0];
         int64_t y = polygonA->vertices[i][1];
-        aVertices[i+0] = x;
-        aVertices[i+1] = y;
+        aVertices[idx+0] = x;
+        aVertices[idx+1] = y;
     }
     Paths64 aPath;
     aPath.push_back(MakePath(aVertices));
@@ -78,10 +79,11 @@ struct ClipResult clip(const struct Polygon *polygonA, const struct Polygon *pol
     std::vector<int64_t> bVertices((size_t)polygonB->length * 2);
     for(unsigned long i = 0; i < polygonB->length; ++i)
     {
+        size_t idx = i * 2;
         int64_t x = polygonB->vertices[i][0];
         int64_t y = polygonB->vertices[i][1];
-        bVertices[i+0] = x;
-        bVertices[i+1] = y;
+        bVertices[idx+0] = x;
+        bVertices[idx+1] = y;
     }
     Paths64 bPath;
     bPath.push_back(MakePath(bVertices));
@@ -143,10 +145,11 @@ unsigned long makeSimple(const struct Polygon *polygon, struct Polygon ***outPol
     std::vector<int64_t> vertices((size_t)polygon->length * 2);
     for(unsigned long i = 0; i < polygon->length; ++i)
     {
+        size_t idx = i * 2;
         int64_t x = polygon->vertices[i][0];
         int64_t y = polygon->vertices[i][1];
-        vertices[i+0] = x;
-        vertices[i+1] = y;
+        vertices[idx+0] = x;
+        vertices[idx+1] = y;
     }
     Paths64 path;
     path.push_back(MakePath(vertices));
