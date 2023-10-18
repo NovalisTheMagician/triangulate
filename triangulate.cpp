@@ -175,13 +175,15 @@ bool clip2(const struct Polygon *editPoly, struct Polygon * const *sectPolys, un
     clipper.AddClip(clip);
 
     Paths64 intersections, differences, clipDifferences;
-    clipper.Execute(ClipType::Intersection, FillRule::Positive, intersections);
-    clipper.Execute(ClipType::Difference, FillRule::Positive, differences);
+    clipper.Execute(ClipType::Intersection, FillRule::NonZero, intersections);
+    clipper.Execute(ClipType::Xor, FillRule::NonZero, differences);
 
+    /*
     clipper.Clear();
     clipper.AddSubject(clip);
     clipper.AddClip(subject);
     clipper.Execute(ClipType::Difference, FillRule::Positive, clipDifferences);
+    */
 
     res->numPolys = (unsigned long)(intersections.size() + differences.size() + clipDifferences.size());
     res->polygons = (struct Polygon**)calloc(res->numPolys, sizeof *res->polygons);
@@ -218,39 +220,19 @@ bool intersects(const struct Polygon *polyA, const struct Polygon *polyB)
 
 unsigned long makeSimple(const struct Polygon *polygon, struct Polygon ***outPolys)
 {
-    std::vector<int64_t> vertices((size_t)polygon->length * 2);
-    for(unsigned long i = 0; i < polygon->length; ++i)
-    {
-        size_t idx = i * 2;
-        int64_t x = polygon->vertices[i][0];
-        int64_t y = polygon->vertices[i][1];
-        vertices[idx+0] = x;
-        vertices[idx+1] = y;
-    }
     Paths64 path;
-    path.push_back(MakePath(vertices));
+    path.push_back(PolyToPath(polygon));
 
-    Paths64 simplePaths = Union(path, FillRule::NonZero);
-
-    const auto makePolygon = [](struct Polygon *poly, Path64 path)
-    {
-        poly->length = (unsigned long)path.size();
-        for(unsigned long i = 0; i < poly->length; ++i)
-        {
-            Point64 p = path[i];
-            poly->vertices[i][0] = (int)p.x;
-            poly->vertices[i][1] = (int)p.y;
-        }
-        return poly;
-    };
+    Clipper64 clipper;
+    clipper.AddSubject(path);
+    Paths64 simplePaths;
+    clipper.Execute(ClipType::Union, FillRule::NonZero, simplePaths);
 
     unsigned long numPolys = (unsigned long)simplePaths.size();
     *outPolys = (struct Polygon**)calloc(numPolys, sizeof **outPolys);
     for(unsigned long i = 0; i < numPolys; ++i)
     {
-        Path64 path = simplePaths[i];
-        struct Polygon *poly = (struct Polygon*)calloc(1, sizeof *poly + path.size() * sizeof *poly->vertices);
-        (*outPolys)[i] = makePolygon(poly, path);
+        (*outPolys)[i] = PathToPoly(simplePaths[i]);
     }
 
     return numPolys;
