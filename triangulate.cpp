@@ -33,6 +33,8 @@ using Clipper2Lib::MakePath;
 using Clipper2Lib::Intersect;
 using Clipper2Lib::Difference;
 using Clipper2Lib::Union;
+using Clipper2Lib::Clipper64;
+using Clipper2Lib::ClipType;
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,40 +64,22 @@ unsigned long triangulate(const struct Polygon *outerPolygon, const struct Polyg
     return (unsigned long)ind.size();
 }
 
-struct ClipResult clip(const struct Polygon *polygonA, const struct Polygon *polygonB)
+static Path64 PolyToPath(const struct Polygon *polygon)
 {
-    std::vector<int64_t> aVertices((size_t)polygonA->length * 2);
-    for(unsigned long i = 0; i < polygonA->length; ++i)
+    std::vector<int64_t> vertices((size_t)polygon->length * 2);
+    for(unsigned long i = 0; i < polygon->length; ++i)
     {
         size_t idx = i * 2;
-        int64_t x = polygonA->vertices[i][0];
-        int64_t y = polygonA->vertices[i][1];
-        aVertices[idx+0] = x;
-        aVertices[idx+1] = y;
+        int64_t x = polygon->vertices[i][0];
+        int64_t y = polygon->vertices[i][1];
+        vertices[idx+0] = x;
+        vertices[idx+1] = y;
     }
-    Paths64 aPath;
-    aPath.push_back(MakePath(aVertices));
+    return MakePath(vertices);
+}
 
-    std::vector<int64_t> bVertices((size_t)polygonB->length * 2);
-    for(unsigned long i = 0; i < polygonB->length; ++i)
-    {
-        size_t idx = i * 2;
-        int64_t x = polygonB->vertices[i][0];
-        int64_t y = polygonB->vertices[i][1];
-        bVertices[idx+0] = x;
-        bVertices[idx+1] = y;
-    }
-    Paths64 bPath;
-    bPath.push_back(MakePath(bVertices));
-
-    Paths64 resPaths = Intersect(aPath, bPath, FillRule::NonZero);
-    if(resPaths.size() == 0)
-    {
-        return (ClipResult){ 0 };
-    }
-
-    ClipResult res = { 0 };
-
+static struct Polygon* PathToPoly(const Path64 &path)
+{
     const auto makePolygon = [](struct Polygon *poly, Path64 path)
     {
         poly->length = (unsigned long)path.size();
@@ -108,36 +92,128 @@ struct ClipResult clip(const struct Polygon *polygonA, const struct Polygon *pol
         return poly;
     };
 
+    struct Polygon *poly = (struct Polygon*)calloc(1, sizeof *poly + path.size() * sizeof *poly->vertices);
+    return makePolygon(poly, path);
+}
+
+struct ClipResult clip(const struct Polygon *polygonA, const struct Polygon *polygonB)
+{
+    Paths64 aPath;
+    aPath.push_back(PolyToPath(polygonA));
+
+    Paths64 bPath;
+    bPath.push_back(PolyToPath(polygonB));
+
+    Clipper64 clipper;
+    clipper.AddSubject(aPath);
+    clipper.AddClip(bPath);
+
+    Paths64 resPaths;
+    if(!clipper.Execute(ClipType::Intersection, FillRule::NonZero, resPaths))
+    {
+        return (ClipResult){ 0 };
+    }
+
+    ClipResult res = { 0 };
+
     res.numNewPolygons = (unsigned long)resPaths.size();
     res.newPolygons = (struct Polygon**)calloc(resPaths.size(), sizeof *res.newPolygons);
     for(unsigned long i = 0; i < res.numNewPolygons; ++i)
     {
         Path64 path = resPaths[i];
-        struct Polygon *poly = (struct Polygon*)calloc(1, sizeof *poly + path.size() * sizeof *poly->vertices);
-        res.newPolygons[i] = makePolygon(poly, path);
+        res.newPolygons[i] = PathToPoly(path);
     }
 
-    Paths64 aClippedPaths = Difference(aPath, resPaths, FillRule::NonZero);
-    res.numAClipped = (unsigned long)aClippedPaths.size();
-    res.aClipped = (struct Polygon**)calloc(aClippedPaths.size(), sizeof *res.aClipped);
-    for(unsigned long i = 0; i < res.numAClipped; ++i)
+    clipper.Clear();
+    clipper.AddSubject(aPath);
+    clipper.AddClip(resPaths);
+
+    Paths64 aClippedPaths;
+    if(clipper.Execute(ClipType::Difference, FillRule::NonZero, aClippedPaths))
     {
-        Path64 path = aClippedPaths[i];
-        struct Polygon *poly = (struct Polygon*)calloc(1, sizeof *poly + path.size() * sizeof *poly->vertices);
-        res.aClipped[i] = makePolygon(poly, path);
+        res.numAClipped = (unsigned long)aClippedPaths.size();
+        res.aClipped = (struct Polygon**)calloc(aClippedPaths.size(), sizeof *res.aClipped);
+        for(unsigned long i = 0; i < res.numAClipped; ++i)
+        {
+            Path64 path = aClippedPaths[i];
+            res.aClipped[i] = PathToPoly(path);
+        }
     }
 
-    Paths64 bClippedPaths = Difference(bPath, resPaths, FillRule::NonZero);
-    res.numBClipped = (unsigned long)bClippedPaths.size();
-    res.bClipped = (struct Polygon**)calloc(bClippedPaths.size(), sizeof *res.bClipped);
-    for(unsigned long i = 0; i < res.numBClipped; ++i)
+    clipper.Clear();
+    clipper.AddSubject(bPath);
+    clipper.AddClip(resPaths);
+
+    Paths64 bClippedPaths;
+    if(clipper.Execute(ClipType::Difference, FillRule::NonZero, bClippedPaths))
     {
-        Path64 path = bClippedPaths[i];
-        struct Polygon *poly = (struct Polygon*)calloc(1, sizeof *poly + path.size() * sizeof *poly->vertices);
-        res.bClipped[i] = makePolygon(poly, path);
+        res.numBClipped = (unsigned long)bClippedPaths.size();
+        res.bClipped = (struct Polygon**)calloc(bClippedPaths.size(), sizeof *res.bClipped);
+        for(unsigned long i = 0; i < res.numBClipped; ++i)
+        {
+            Path64 path = bClippedPaths[i];
+            res.bClipped[i] = PathToPoly(path);
+        }
     }
 
     return res;
+}
+
+bool clip2(const struct Polygon *editPoly, struct Polygon * const *sectPolys, unsigned long numSectPolys, struct ClipResult2 *res)
+{
+    assert(res);
+
+    Paths64 subject, clip;
+    for(size_t i = 0; i < numSectPolys; ++i)
+    {
+        subject.push_back(PolyToPath(sectPolys[i]));
+    }
+    clip.push_back(PolyToPath(editPoly));
+
+    Clipper64 clipper;
+    clipper.AddSubject(subject);
+    clipper.AddClip(clip);
+
+    Paths64 intersections, differences, clipDifferences;
+    clipper.Execute(ClipType::Intersection, FillRule::Positive, intersections);
+    clipper.Execute(ClipType::Difference, FillRule::Positive, differences);
+
+    clipper.Clear();
+    clipper.AddSubject(clip);
+    clipper.AddClip(subject);
+    clipper.Execute(ClipType::Difference, FillRule::Positive, clipDifferences);
+
+    res->numPolys = (unsigned long)(intersections.size() + differences.size() + clipDifferences.size());
+    res->polygons = (struct Polygon**)calloc(res->numPolys, sizeof *res->polygons);
+    unsigned long idx = 0;
+    for(const auto &path : intersections)
+    {
+        res->polygons[idx++] = PathToPoly(path);
+    }
+    for(const auto &path : differences)
+    {
+        res->polygons[idx++] = PathToPoly(path);
+    }
+    for(const auto &path : clipDifferences)
+    {
+        res->polygons[idx++] = PathToPoly(path);
+    }
+
+    return true;
+}
+
+bool intersects(const struct Polygon *polyA, const struct Polygon *polyB)
+{
+    Paths64 subject, clip;
+    subject.push_back(PolyToPath(polyA));
+    clip.push_back(PolyToPath(polyB));
+
+    Clipper64 clipper;
+    clipper.AddSubject(subject);
+    clipper.AddClip(clip);
+    Paths64 solution;
+    clipper.Execute(ClipType::Intersection, FillRule::NonZero, solution);
+    return solution.size() > 0;
 }
 
 unsigned long makeSimple(const struct Polygon *polygon, struct Polygon ***outPolys)
