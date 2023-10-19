@@ -175,17 +175,35 @@ bool clip2(const struct Polygon *editPoly, struct Polygon * const *sectPolys, un
     clipper.AddClip(clip);
 
     Paths64 intersections, differences, clipDifferences;
-    clipper.Execute(ClipType::Intersection, FillRule::NonZero, intersections);
-    clipper.Execute(ClipType::Xor, FillRule::NonZero, differences);
+    clipper.Execute(ClipType::Intersection, FillRule::EvenOdd, intersections);
+    // clipper.Execute(ClipType::Xor, FillRule::EvenOdd, differences);
 
-    /*
     clipper.Clear();
     clipper.AddSubject(clip);
     clipper.AddClip(subject);
-    clipper.Execute(ClipType::Difference, FillRule::Positive, clipDifferences);
-    */
+    clipper.Execute(ClipType::Difference, FillRule::EvenOdd, clipDifferences);
 
-    res->numPolys = (unsigned long)(intersections.size() + differences.size() + clipDifferences.size());
+    std::vector<Paths64> sectorPaths;
+    for(size_t i = 0; i < numSectPolys; ++i)
+    {
+        clipper.Clear();
+        clipper.AddClip(intersections);
+
+        subject.clear();
+        subject.push_back(PolyToPath(sectPolys[i]));
+        clipper.AddSubject(subject);
+
+        auto &paths = sectorPaths.emplace_back();
+        clipper.Execute(ClipType::Difference, FillRule::EvenOdd, paths);
+    }
+
+    size_t num = 0;
+    for(const auto &paths : sectorPaths)
+    {
+        num += paths.size();
+    }
+
+    res->numPolys = (unsigned long)(intersections.size() + differences.size() + clipDifferences.size() + num);
     res->polygons = (struct Polygon**)calloc(res->numPolys, sizeof *res->polygons);
     unsigned long idx = 0;
     for(const auto &path : intersections)
@@ -199,6 +217,14 @@ bool clip2(const struct Polygon *editPoly, struct Polygon * const *sectPolys, un
     for(const auto &path : clipDifferences)
     {
         res->polygons[idx++] = PathToPoly(path);
+    }
+
+    for(const auto &paths : sectorPaths)
+    {
+        for(const auto &path : paths)
+        {
+            res->polygons[idx++] = PathToPoly(path);
+        }
     }
 
     return true;
