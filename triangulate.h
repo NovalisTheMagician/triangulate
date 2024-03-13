@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-typedef int Vertex[2];
+typedef float Vertex[2];
 typedef unsigned int Index;
 
 struct Polygon
