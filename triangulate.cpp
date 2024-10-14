@@ -27,7 +27,7 @@ using Vertex_Intern = std::array<float, 2>;
 extern "C" {
 #endif
 
-unsigned long triangulate(const struct Polygon *outerPolygon, const struct Polygon **innerPolygons, unsigned long numInnerPolygons, Index **indices)
+unsigned long triangulate(struct Polygon *outerPolygon, struct Polygon **innerPolygons, unsigned long numInnerPolygons, Index **indices)
 {
     if(!outerPolygon || outerPolygon->length < 3 || !indices || (numInnerPolygons > 0 && !innerPolygons))
         return 0;

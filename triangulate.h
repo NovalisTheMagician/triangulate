@@ -14,7 +14,7 @@ struct Polygon
     Vertex vertices[];
 };
 
-unsigned long triangulate(const struct Polygon *outerPolygon, const struct Polygon **innerPolygons, unsigned long numInnerPolygons, Index **indices);
+unsigned long triangulate(struct Polygon *outerPolygon, struct Polygon **innerPolygons, unsigned long numInnerPolygons, Index **indices);
 
 #ifdef __cplusplus
 }
