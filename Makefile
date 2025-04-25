@@ -1,7 +1,7 @@
 APPLICATION := triangulate
 LIBRARY := lib$(APPLICATION).a
 
-CPPFLAGS := 
+CPPFLAGS := -Iearcut/include
 
 INSTALL_PREFIX := /usr/local
 
