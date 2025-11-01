@@ -21,7 +21,7 @@ namespace mapbox::util {
     };
 }
 
-using Vertex_Intern = std::array<float, 2>;
+using Vertex_Intern = std::array<double, 2>;
 
 #ifdef __cplusplus
 extern "C" {
